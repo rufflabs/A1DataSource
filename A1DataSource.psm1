@@ -3,19 +3,19 @@
 Creates a new Action1 Data Source.
 
 .DESCRIPTION
-The New-A1DataSource function creates a new Action1 Data Source object with hostname and unique A1_Key.
+The New-A1DataSource function creates a new Action1 Data Source object with a unique A1_Key.
 Use Set-A1DataSource to add or update properties of the data source.
 
 .OUTPUTS
 System.Management.Automation.PSCustomObject
 Returns a PSCustomObject representing the new Action1 Data Source with the following properties:
-- Hostname: The hostname of the computer.
 - A1_Key: A unique GUID.
 
 .EXAMPLE
 PS> $MyDataSource = New-A1DataSource # Create new data source
 PS> $MyDataSource | Set-A1DataSource -Key "Reboot Needed" -Value "Yes" # Add a key and value
-PS> $MyDataSource # Outputs the data source to be logged by Action1.
+PS> Set-A1DataSource -InputObject $MyDataSource -Key "Patched" -Value "Yes" # Add another property
+PS> $MyDataSource # Outputs the data source to be logged by Action1
 
 #>
 function New-A1DataSource {
@@ -23,8 +23,7 @@ function New-A1DataSource {
 
     # Create a new PSCustomObject
     $DataSource = [PSCustomObject]@{
-        Hostname = $env:COMPUTERNAME
-        A1_Key   = (New-Guid).ToString()
+        A1_Key = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($env:COMPUTERNAME)).Replace('=', '')
     }
 
     $DataSource
@@ -32,13 +31,13 @@ function New-A1DataSource {
 
 <#
 .SYNOPSIS
-Sets or updates an Action 1 Data Source property.
+Sets or updates an Action1 Data Source property.
 
 .DESCRIPTION
 The Set-A1DataSource function sets or updates a data source property of an object created with New-A1DataSource.
 
 .PARAMETER InputObject
-An object created with New-A1DataSource
+A PSCustomObject created with New-A1DataSource.
 
 .PARAMETER Key
 The key/name of the data source property to set or update.
@@ -53,7 +52,7 @@ PS> $MyDataSource # Output the data to be logged by Action1
 
 .EXAMPLE
 PS> $MyDataSource = New-A1DataSource # Create a new data source
-PS> $MyDataSource | Set-A1DataSource "Reboot Needed" "Yes" # Add property
+PS> $MyDataSource | Set-A1DataSource -Key "Reboot Needed" -Value "Yes" # Add property
 PS> $MyDataSource # Output the data to be logged by Action1
 
 .INPUTS
@@ -95,6 +94,9 @@ function Set-A1DataSource {
         else {
             # If it doesn't, add a new property
             $InputObject | Add-Member -MemberType NoteProperty -Name $Key -Value $Value
+
+            # Ensure A1_Key is the last property
+            $InputObject | Add-Member -MemberType NoteProperty -Name A1_Key -Value $InputObject.A1_Key -Force
         }
     }
 }
